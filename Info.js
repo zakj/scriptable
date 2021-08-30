@@ -25,21 +25,14 @@ const textFmt = {
   },
 };
 
-/** @type {[number, Color][]} */
-const AQI_THRESHOLD_COLORS = [
-  [300, new Color("ce4ec5", 1)], // hazardous
-  [200, new Color("f33939", 1)], // very unhealthy
-  [150, new Color("f16745", 1)], // unhealthy
-  [100, new Color("f7a021", 1)], // unhealthy for sensitive groups
-  [50, new Color("f2e269", 1)], // moderate
-  [-Infinity, textColor], // good (green: 6de46d)
-];
-
-/** @type {[number, string][]} */
-const AQI_THRESHOLD_SYMBOLS = [
-  [200, "aqi.high"], // very unhealthy
-  [150, "aqi.medium"], // unhealthy
-  [-Infinity, "aqi.low"], // moderate
+/** @type {{minAqi: number, color: Color, symbol: string}[]} */
+const AQI_THRESHOLDS = [
+  { minAqi: 300, color: new Color("ce4ec5", 1), symbol: "aqi.high" }, // hazardous
+  { minAqi: 200, color: new Color("f33939", 1), symbol: "aqi.high" }, // very unhealthy
+  { minAqi: 150, color: new Color("f16745", 1), symbol: "aqi.medium" }, // unhealthy
+  { minAqi: 100, color: new Color("f7a021", 1), symbol: "aqi.medium" }, // unhealthy for sensitive groups
+  { minAqi: 50, color: new Color("f2e269", 1), symbol: "aqi.low" }, // moderate
+  { minAqi: -Infinity, color: textColor, symbol: "aqi.low" }, // good (green: 6de46d)
 ];
 
 const backgroundImageFile = new util.File(
@@ -244,12 +237,9 @@ async function buildWeather(stack) {
     aqiStack.centerAlignContent();
     aqiStack.spacing = 3;
 
-    const color = AQI_THRESHOLD_COLORS.find(
-      ([n, color]) => aqi.current >= n
-    )[1];
-    const symbol = AQI_THRESHOLD_SYMBOLS.find(
-      ([n, color]) => aqi.current >= n
-    )[1];
+    const { color, symbol } = AQI_THRESHOLDS.find(
+      ({ minAqi }) => aqi.current >= minAqi
+    );
     const trend =
       aqi.trend > 0
         ? "arrow.up.right"
@@ -281,8 +271,11 @@ async function buildWeather(stack) {
 /** @type {() => Promise<{current: number, trend: number}>} */
 async function fetchAqiData() {
   const location = await locationCacheFile.readJSON();
-  const sensorId = await purpleAir.fetchSensorId({lat: location.lat, lng: location.lon})
-  console.log(`fetching aqi from sensor ${sensorId}`)
+  const sensorId = await purpleAir.fetchSensorId({
+    lat: location.lat,
+    lng: location.lon,
+  });
+  console.log(`fetching aqi from sensor ${sensorId}`);
   return purpleAir.fetchAqi(sensorId);
 }
 

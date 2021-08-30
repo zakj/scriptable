@@ -43,21 +43,26 @@ async function fetchSensorId({ lat, lng }) {
       `https://www.purpleair.com/json?exclude=true&nwlat=${nwLat}&selat=${seLat}&nwlng=${nwLng}&selng=${seLng}`
     );
     const json = await req.loadJSON();
-    sensors = json.results.filter((s) => !s.Flag && !s.A_H && s.DEVICE_LOCATIONTYPE !== "inside");
+    sensors = json.results.filter(
+      (s) => !s.Flag && !s.A_H && s.DEVICE_LOCATIONTYPE !== "inside"
+    );
     bound *= 2;
   }
 
   let closestSensor = null;
   let closestDistance = Infinity;
   for (const sensor of sensors) {
-    const distance = haversine({lat, lng}, {lat: sensor.Lat, lng: sensor.Lon})
+    const distance = haversine(
+      { lat, lng },
+      { lat: sensor.Lat, lng: sensor.Lon }
+    );
     if (distance < closestDistance) {
       closestSensor = sensor;
       closestDistance = distance;
     }
   }
 
-  sensorCacheFile.writeJSON({lat, lng, id: closestSensor.ID})
+  sensorCacheFile.writeJSON({ lat, lng, id: closestSensor.ID });
   return closestSensor.ID;
 }
 
