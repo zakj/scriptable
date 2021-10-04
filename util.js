@@ -23,8 +23,9 @@ class File {
 
   /** @type {(minutes: number) => boolean} */
   modifiedInLast(minutes) {
-    if (!this.exists) return false;
-    const delta = this.modified.getTime() - new Date().getTime();
+    // this.modified can be null sometimes?
+    if (!this.exists || !this.modified) return false;
+    const delta = new Date().getTime() - this.modified.getTime();
     return delta < minutes * 60 * 1000;
   }
 
