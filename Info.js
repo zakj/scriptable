@@ -221,7 +221,7 @@ async function buildEvents(stack) {
 
 /** @type {(stack: WidgetStack) => Promise<void>} */
 async function buildWeather(stack) {
-  const [aqi, weather] = await Promise.all([
+  const [aqi, weather] = await Promise.allSettled([
     fetchAqiData(),
     fetchWeatherData(),
   ]);
@@ -232,26 +232,36 @@ async function buildWeather(stack) {
   stack.addSpacer(5);
   const currentStack = stack.addStack();
 
-  if (aqi.current > 50) {
+  let aqiShown = false;
+  let aqiCurrent = null;
+  let aqiTrend = 0;
+  if (aqi.status === "fulfilled" && aqi.value.current > 50) {
+    aqiShown = true;
+    aqiCurrent = aqi.value.current;
+    aqiTrend = aqi.value.trend;
+  } else if (aqi.status === "rejected") {
+    aqiShown = true;
+  }
+  if (aqiShown) {
+    const { color, symbol } = AQI_THRESHOLDS.find(
+      ({ minAqi }) => (aqiCurrent || 0) >= minAqi
+    );
+    const trend =
+      aqiTrend > 0
+        ? "arrow.up.right"
+        : aqiTrend < 0
+        ? "arrow.down.right"
+        : null;
+
     const aqiStack = forecastStack.addStack();
     aqiStack.centerAlignContent();
     aqiStack.spacing = 3;
-
-    const { color, symbol } = AQI_THRESHOLDS.find(
-      ({ minAqi }) => aqi.current >= minAqi
-    );
-    const trend =
-      aqi.trend > 0
-        ? "arrow.up.right"
-        : aqi.trend < 0
-        ? "arrow.down.right"
-        : null;
 
     let wimg = aqiStack.addImage(SFSymbol.named(symbol).image);
     wimg.imageSize = new Size(10, 10);
     wimg.tintColor = color;
 
-    const aqiText = aqiStack.addText(aqi.current.toString());
+    const aqiText = aqiStack.addText((aqiCurrent || "-").toString());
     textFmt.subhead(aqiText);
     aqiText.textColor = color;
 
@@ -261,11 +271,18 @@ async function buildWeather(stack) {
       wimg.tintColor = color;
     }
   }
-  textFmt.subhead(forecastStack.addText(`${weather.low}°/${weather.high}°`));
-  forecastStack.addSpacer(6);
 
-  currentStack.layoutVertically();
-  textFmt.bignum(currentStack.addText(`${weather.current}°`));
+  if (weather.status === "fulfilled") {
+    textFmt.subhead(
+      forecastStack.addText(`${weather.value.low}°/${weather.value.high}°`)
+    );
+    forecastStack.addSpacer(6);
+
+    currentStack.layoutVertically();
+    textFmt.bignum(currentStack.addText(`${weather.value.current}°`));
+  } else {
+    textFmt.bignum(currentStack.addText("--"));
+  }
 }
 
 /** @type {() => Promise<{current: number, trend: number}>} */
