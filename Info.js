@@ -69,6 +69,12 @@ async function main() {
     widget.presentMedium();
   } else if (config.runsInWidget) {
     const widget = await buildWidget();
+    const now = new Date();
+    const refreshAt =
+      now.getHours() < 7
+        ? now.setHours(6, 30) && now // don't update overnight
+        : now.getTime() + 5 * 60 * 1000; // 5 minutes
+    widget.refreshAfterDate = new Date(refreshAt);
     Script.setWidget(widget);
   }
 }
@@ -153,10 +159,6 @@ async function buildEvents(stack) {
   stack.url = "calshow://";
   stack.layoutVertically();
 
-  const nonAsciiRe = /[^\x00-\x7f]/g;
-  const dateFormatter = new DateFormatter();
-  dateFormatter.dateFormat = "HH:mm";
-
   const pillImage = await pillImageFile.readImage();
   const pillSize = new Size(2, 11);
   /** @type {(stack: WidgetStack, color: Color) => void} */
@@ -169,6 +171,9 @@ async function buildEvents(stack) {
     pill.tintColor = color;
   }
 
+  const nonAsciiRe = /[^\x00-\x7f]/g;
+  const dateFormatter = new DateFormatter();
+  dateFormatter.dateFormat = "HH:mm";
   events.forEach((e) => {
     const containerStack = stack.addStack();
     containerStack.setPadding(3, 0, 3, 15);
