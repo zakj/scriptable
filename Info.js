@@ -186,7 +186,7 @@ async function buildEvents(stack) {
     const textStack = containerStack.addStack();
     textStack.layoutVertically();
     const titleText = textStack.addText(
-      e.title.replace(nonAsciiRe, "").replace(/\s+/g, " ").trim()
+      e.title.replace(nonAsciiRe, " ").replace(/\s+/g, " ").trim()
     );
     titleText.lineLimit = 3;
     textFmt.normal(titleText);
