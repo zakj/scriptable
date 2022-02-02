@@ -1,6 +1,7 @@
-// icon-color: blue; icon-glyph: info;
+//! icon-color: blue; icon-glyph: info;
 // @ts-check
 
+const { transparent } = importModule("no-background");
 const util = importModule("util");
 const purpleAir = importModule("purpleAir");
 
@@ -35,9 +36,6 @@ const AQI_THRESHOLDS = [
   { minAqi: -Infinity, color: textColor, symbol: "aqi.low" }, // good (green: 6de46d)
 ];
 
-const backgroundImageFile = new util.File(
-  `bg-medium-top-${Device.isUsingDarkAppearance() ? "dark" : "light"}.jpg`
-);
 const calendarListFile = new util.File("calendar-list.json");
 const locationCacheFile = new util.File("location.json", { local: true });
 const pillImageFile = new util.File("pill.png");
@@ -83,7 +81,7 @@ async function main() {
 
 async function buildWidget() {
   const widget = new ListWidget();
-  widget.backgroundImage = await backgroundImageFile.readImage();
+  widget.backgroundImage = await transparent(Script.name());
   widget.setPadding(10, 15, 10, 0);
 
   const eventsStack = widget.addStack();
@@ -318,3 +316,5 @@ async function fetchWeatherData() {
     current: Math.round(resp.current.temp),
   };
 }
+
+module.exports = {};
