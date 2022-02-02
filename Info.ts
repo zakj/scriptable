@@ -1,9 +1,8 @@
 //! icon-color: blue; icon-glyph: info;
-// @ts-check
 
 const { transparent } = importModule("no-background");
-const util = importModule("util");
-const purpleAir = importModule("purpleAir");
+import { fetchAqi, fetchSensorId } from "./purpleAir";
+import { File, refreshAt } from "./util";
 
 const textColor = new Color("#ffffff", 1);
 const dimTextColor = new Color("#ffffff", 0.85);
@@ -26,8 +25,8 @@ const textFmt = {
   },
 };
 
-/** @type {{minAqi: number, color: Color, symbol: string}[]} */
-const AQI_THRESHOLDS = [
+type AqiThreshold = { minAqi: number; color: Color; symbol: string };
+const AQI_THRESHOLDS: AqiThreshold[] = [
   { minAqi: 300, color: new Color("ce4ec5", 1), symbol: "aqi.high" }, // hazardous
   { minAqi: 200, color: new Color("f33939", 1), symbol: "aqi.high" }, // very unhealthy
   { minAqi: 150, color: new Color("f16745", 1), symbol: "aqi.medium" }, // unhealthy
@@ -36,10 +35,10 @@ const AQI_THRESHOLDS = [
   { minAqi: -Infinity, color: textColor, symbol: "aqi.low" }, // good (green: 6de46d)
 ];
 
-const calendarListFile = new util.File("calendar-list.json");
-const locationCacheFile = new util.File("location.json", { local: true });
-const pillImageFile = new util.File("pill.png");
-const weatherApiKeyFile = new util.File("openweather-api-key.json");
+const calendarListFile = new File("calendar-list.json");
+const locationCacheFile = new File("location.json", { local: true });
+const pillImageFile = new File("pill.png");
+const weatherApiKeyFile = new File("openweather-api-key.json");
 
 main().then(() => Script.complete());
 
@@ -67,12 +66,7 @@ async function main() {
     widget.presentMedium();
   } else if (config.runsInWidget) {
     const widget = await buildWidget();
-    const now = new Date();
-    const refreshAt =
-      now.getHours() < 7
-        ? now.setHours(6, 30) && now // don't update overnight
-        : now.getTime() + 5 * 60 * 1000; // 5 minutes
-    widget.refreshAfterDate = new Date(refreshAt);
+    widget.refreshAfterDate = refreshAt();
     Script.setWidget(widget);
   }
 }
@@ -101,8 +95,7 @@ async function buildWidget() {
   return widget;
 }
 
-/** @type {(stack: WidgetStack) => Promise<void>} */
-async function buildDate(stack) {
+async function buildDate(stack: WidgetStack): Promise<void> {
   const dateFormatter = new DateFormatter();
   const now = new Date();
 
@@ -119,8 +112,7 @@ async function buildDate(stack) {
   dayStack.addSpacer(6);
 }
 
-/** @type {(stack: WidgetStack) => Promise<void>} */
-async function buildEvents(stack) {
+async function buildEvents(stack: WidgetStack): Promise<void> {
   const now = new Date();
   const tenMinutesFromNow = new Date();
   tenMinutesFromNow.setMinutes(tenMinutesFromNow.getMinutes() + 10);
@@ -128,7 +120,9 @@ async function buildEvents(stack) {
 
   let calendars = await Calendar.forEvents();
   if (calendarListFile.exists) {
-    const calendarList = new Set(await calendarListFile.readJSON());
+    const calendarList = new Set(
+      (await calendarListFile.readJSON()) as string[]
+    );
     calendars = calendars.filter((c) => calendarList.has(c.identifier));
   }
 
@@ -159,8 +153,7 @@ async function buildEvents(stack) {
 
   const pillImage = await pillImageFile.readImage();
   const pillSize = new Size(2, 11);
-  /** @type {(stack: WidgetStack, color: Color) => void} */
-  function pill(stack, color) {
+  function pill(stack: WidgetStack, color: Color): void {
     const pillStack = stack.addStack();
     pillStack.layoutVertically();
     pillStack.addSpacer(2);
@@ -205,11 +198,10 @@ async function buildEvents(stack) {
     stack.addSpacer(2);
     const containerStack = stack.addStack();
 
-    const colors = moreEvents.reduce(
-      (acc, e) => ({ [e.calendar.identifier]: e.calendar.color, ...acc }),
-      {}
+    const colors = new Map(
+      moreEvents.map((e) => [e.calendar.identifier, e.calendar.color])
     );
-    Object.values(colors).forEach((color) => {
+    [...colors.values()].forEach((color) => {
       pill(containerStack, color);
       containerStack.addSpacer(3);
     });
@@ -222,8 +214,7 @@ async function buildEvents(stack) {
   }
 }
 
-/** @type {(stack: WidgetStack) => Promise<void>} */
-async function buildWeather(stack) {
+async function buildWeather(stack: WidgetStack): Promise<void> {
   const [aqi, weather] = await Promise.allSettled([
     fetchAqiData(),
     fetchWeatherData(),
@@ -243,7 +234,7 @@ async function buildWeather(stack) {
     aqiCurrent = aqi.value.current;
     aqiTrend = aqi.value.trend;
   } else if (aqi.status === "rejected") {
-    aqiShown = true;
+    // XXX aqiShown = true;
   }
   if (aqiShown) {
     const { color, symbol } = AQI_THRESHOLDS.find(
@@ -288,23 +279,27 @@ async function buildWeather(stack) {
   }
 }
 
-/** @type {() => Promise<{current: number, trend: number}>} */
-async function fetchAqiData() {
-  const location = await locationCacheFile.readJSON();
-  const sensorId = await purpleAir.fetchSensorId({
+async function fetchAqiData(): Promise<{ current: number; trend: number }> {
+  const location = (await locationCacheFile.readJSON()) as {
+    lat: number;
+    lon: number;
+  };
+  const sensorId = await fetchSensorId({
     lat: location.lat,
     lng: location.lon,
   });
-  console.log(`fetching aqi from sensor ${sensorId}`);
-  return purpleAir.fetchAqi(sensorId);
+  return fetchAqi(sensorId);
 }
 
-/** @type {() => Promise<{low: number, high: number, current: number}>} */
-async function fetchWeatherData() {
-  const [apiKey, loc] = await Promise.all([
+async function fetchWeatherData(): Promise<{
+  low: number;
+  high: number;
+  current: number;
+}> {
+  const [apiKey, loc] = (await Promise.all([
     weatherApiKeyFile.readJSON(),
     locationCacheFile.readJSON(),
-  ]);
+  ])) as [string, { lat: number; lon: number }];
 
   const req = new Request(
     `https://api.openweathermap.org/data/2.5/onecall?lat=${loc.lat}&lon=${loc.lon}&units=imperial&exclude=minutely,hourly,alerts&appid=${apiKey}`

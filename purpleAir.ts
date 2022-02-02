@@ -1,12 +1,10 @@
-// icon-color: purple; icon-glyph: magic;
-// @ts-check
+import { File } from "./util";
 
-const util = importModule("util");
+type Location = { lat: number; lng: number };
 
-/** @typedef {{lat: number, lng: number}} Location */
-
-/** @type {(sensorId: number) => Promise<{current: number, trend: number}>} */
-async function fetchAqi(sensorId) {
+export async function fetchAqi(
+  sensorId: number
+): Promise<{ current: number; trend: number }> {
   const req = new Request(`https://www.purpleair.com/json?show=${sensorId}`);
   const json = await req.loadJSON();
 
@@ -23,9 +21,8 @@ async function fetchAqi(sensorId) {
   };
 }
 
-/** @type {(location: Location) => Promise<number>} */
-async function fetchSensorId({ lat, lng }) {
-  const sensorCacheFile = new util.File("purple-air.json");
+export async function fetchSensorId({ lat, lng }: Location): Promise<number> {
+  const sensorCacheFile = new File("purple-air.json");
   if (sensorCacheFile.modifiedInLast(15)) {
     const sensorCache = await sensorCacheFile.readJSON();
     if (sensorCache.lat === lat && sensorCache.lng === lng)
@@ -66,10 +63,8 @@ async function fetchSensorId({ lat, lng }) {
   return closestSensor.ID;
 }
 
-/** @type {(one: Location, two: Location) => number} */
-function haversine(one, two) {
-  /** @type {(degrees: number) => number} */
-  const toRadians = (degrees) => (degrees * Math.PI) / 180;
+function haversine(one: Location, two: Location): number {
+  const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
   const dLat = toRadians(two.lat - one.lat);
   const dLng = toRadians(two.lng - one.lng);
   const a =
@@ -81,12 +76,14 @@ function haversine(one, two) {
   return 2 * Math.asin(Math.sqrt(a));
 }
 
-/** @type {(pm: number) => number} */
-function aqiFromPm(pm) {
-  /** @typedef {[concLo: number, concHi: number, aqiLo: number, aqiHi: number]} TableRow */
-
-  /** @type TableRow[] */
-  const table = [
+function aqiFromPm(pm: number): number {
+  type TableRow = [
+    concLo: number,
+    concHi: number,
+    aqiLo: number,
+    aqiHi: number
+  ];
+  const table: TableRow[] = [
     [0.0, 12.0, 0, 50],
     [12.1, 35.4, 51, 100],
     [35.5, 55.4, 101, 150],
@@ -95,8 +92,10 @@ function aqiFromPm(pm) {
     [250.5, 500.4, 301, 500],
   ];
 
-  /** @type {(concI: number, values: TableRow) => number} */
-  const computeAqi = (concI, [concLo, concHi, aqiLo, aqiHi]) =>
+  const computeAqi = (
+    concI: number,
+    [concLo, concHi, aqiLo, aqiHi]: TableRow
+  ): number =>
     Math.round(
       ((concI - concLo) / (concHi - concLo)) * (aqiHi - aqiLo) + aqiLo
     );
@@ -104,8 +103,3 @@ function aqiFromPm(pm) {
   const values = table.find(([concLo, concHi, aqiLo, aqiHi]) => pm <= concHi);
   return values ? computeAqi(pm, values) : 500;
 }
-
-module.exports = {
-  fetchAqi,
-  fetchSensorId,
-};

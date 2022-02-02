@@ -1,0 +1,16 @@
+{
+  "private": true,
+  "scripts": {
+    "build": "esbuild --bundle --legal-comments=inline --minify --outdir=Documents Info.ts Obsidian.ts",
+    "start": "esbuild --bundle --legal-comments=inline --minify --outdir=Documents --watch Info.ts Obsidian.ts"
+  },
+  "eslintConfig": {
+    "extends": "@zakj"
+  },
+  "devDependencies": {
+    "@types/scriptable-ios": "^1.6.5",
+    "@zakj/eslint-config": "^1.0.0",
+    "esbuild": "^0.14.16",
+    "eslint": "8.8.0"
+  }
+}

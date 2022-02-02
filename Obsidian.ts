@@ -1,19 +1,20 @@
 //! icon-color: deep-gray; icon-glyph: tasks;
-// @ts-check
+// TODO icon-color/glyph is broken with esbuild
 
 // TODO: improve success state
 // TODO: strip markdown from description
 
-/** @typedef {{description: string, due: Date, filename: string}} Task */
-
 const { transparent, applyTint } = importModule("no-background");
+import { addText, refreshAt, WidgetTextProps } from "./util";
+
+type Task = { description: string; due: Date; filename: string };
 
 const BOOKMARK = "Obsidian";
 const TODAY = new Date();
 const TASK_RE =
   /^\s*- \[ \] *(?<description>.+?) *📅 *(?<due>\d\d\d\d-\d\d-\d\d)/gm;
 
-const textStyle = {
+const textStyle: WidgetTextProps = {
   font: Font.systemFont(12),
   textColor: new Color("#ffffff", 1),
 };
@@ -44,19 +45,7 @@ async function main() {
   }
 }
 
-/** @type {() => Date} */
-function refreshAt() {
-  // TODO factor into utils
-  const now = new Date();
-  return new Date(
-    now.getHours() < 7
-      ? now.setHours(6, 30) && now // don't update overnight
-      : now.getTime() + 30 * 1000 // in 30 seconds
-  );
-}
-
-/** @type {(fm: FileManager, path: string) => Promise<Task[]>} */
-async function scanDirForTasks(fm, dir) {
+async function scanDirForTasks(fm: FileManager, dir: string): Promise<Task[]> {
   let results = [];
   for (const filename of fm.listContents(dir)) {
     const path = fm.joinPath(dir, filename);
@@ -78,21 +67,7 @@ async function scanDirForTasks(fm, dir) {
   return results;
 }
 
-/**
- *  @type {(
- *   stack: ListWidget | WidgetStack,
- *   text: string,
- *   properties: Partial<{[K in keyof WidgetText]: WidgetText[K]}>
- * ) => WidgetText}
- */
-function addText(stack, text, properties) {
-  const wt = stack.addText(text);
-  Object.entries(properties).forEach(([k, v]) => (wt[k] = v));
-  return wt;
-}
-
-/** @type {(tasks: Task[]) => ListWidget} */
-function buildTasksWidget(tasks) {
+function buildTasksWidget(tasks: Task[]): ListWidget {
   const widget = new ListWidget();
   widget.setPadding(16, 10, 16, 5);
 
@@ -133,8 +108,7 @@ function buildTasksWidget(tasks) {
   return widget;
 }
 
-/** @type {() => ListWidget} */
-function buildEmptyWidget() {
+function buildEmptyWidget(): ListWidget {
   const widget = new ListWidget();
   widget.setPadding(50, 50, 50, 50);
   const s = widget.addStack();
@@ -146,4 +120,4 @@ function buildEmptyWidget() {
   return widget;
 }
 
-module.exports = {};
+export {};
