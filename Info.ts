@@ -2,26 +2,25 @@
 
 const { transparent } = importModule("no-background");
 import { fetchAqi, fetchSensorId } from "./purpleAir";
-import { File, refreshAt } from "./util";
+import { addText, File, refreshAt, WidgetTextProps } from "./util";
 
 const textColor = new Color("#ffffff", 1);
 const dimTextColor = new Color("#ffffff", 0.85);
 
-/** @type {Record<string, (wt: WidgetText) => void>} */
-const textFmt = {
-  bignum: (wt) => {
-    wt.font = Font.ultraLightSystemFont(36);
-    wt.lineLimit = 1;
-    wt.textColor = textColor;
+const style: Record<string, WidgetTextProps> = {
+  bignum: {
+    font: Font.ultraLightSystemFont(36),
+    lineLimit: 1,
+    textColor: textColor,
   },
-  normal: (wt) => {
-    wt.font = Font.systemFont(12);
-    wt.textColor = textColor;
+  normal: {
+    font: Font.systemFont(12),
+    textColor: textColor,
   },
-  subhead: (wt) => {
-    wt.font = Font.thinSystemFont(12);
-    wt.lineLimit = 1;
-    wt.textColor = dimTextColor;
+  subhead: {
+    font: Font.thinSystemFont(12),
+    lineLimit: 1,
+    textColor: dimTextColor,
   },
 };
 
@@ -102,13 +101,13 @@ async function buildDate(stack: WidgetStack): Promise<void> {
   stack.bottomAlignContent();
 
   dateFormatter.dateFormat = "d";
-  textFmt.bignum(stack.addText(dateFormatter.string(now)));
+  addText(stack, dateFormatter.string(now), style.bignum);
   stack.addSpacer(5);
 
   const dayStack = stack.addStack();
   dayStack.layoutVertically();
   dateFormatter.dateFormat = "EEEE";
-  textFmt.normal(dayStack.addText(dateFormatter.string(now).toUpperCase()));
+  addText(dayStack, dateFormatter.string(now).toUpperCase(), style.normal);
   dayStack.addSpacer(6);
 }
 
@@ -137,9 +136,10 @@ async function buildEvents(stack: WidgetStack): Promise<void> {
     // Today's all-day events seem to show up in tomorrow's results.
     events = events.filter((e) => e.endDate.getDay() > now.getDay());
     if (events.length > 0) {
-      const tomorrowText = stack.addText("Tomorrow".toUpperCase());
-      tomorrowText.textColor = textColor;
-      tomorrowText.font = Font.semiboldSystemFont(10);
+      addText(stack, "Tomorrow".toUpperCase(), {
+        font: Font.semiboldSystemFont(10),
+        textColor: textColor,
+      });
     }
   }
   const eventSort = (e) => (isAllDay(e) ? e.endDate : e.startDate);
@@ -172,7 +172,7 @@ async function buildEvents(stack: WidgetStack): Promise<void> {
     if (!isAllDay(e)) {
       const timeStack = containerStack.addStack();
       timeStack.size = new Size(34, 0);
-      textFmt.subhead(timeStack.addText(dateFormatter.string(e.startDate)));
+      addText(timeStack, dateFormatter.string(e.startDate), style.subhead);
       containerStack.addSpacer(5);
     }
 
@@ -181,16 +181,14 @@ async function buildEvents(stack: WidgetStack): Promise<void> {
 
     const textStack = containerStack.addStack();
     textStack.layoutVertically();
-    const titleText = textStack.addText(
-      e.title.replace(nonAsciiRe, " ").replace(/\s+/g, " ").trim()
+    addText(
+      textStack,
+      e.title.replace(nonAsciiRe, " ").replace(/\s+/g, " ").trim(),
+      { ...style.normal, lineLimit: 3 }
     );
-    titleText.lineLimit = 3;
-    textFmt.normal(titleText);
 
     if (e.location && !e.location.match(/^http/)) {
-      const locationText = textStack.addText(e.location);
-      locationText.lineLimit = 1;
-      textFmt.subhead(locationText);
+      addText(textStack, e.location, { ...style.subhead, lineLimit: 1 });
     }
   });
 
@@ -208,8 +206,10 @@ async function buildEvents(stack: WidgetStack): Promise<void> {
     containerStack.addSpacer(2);
 
     const count = moreEvents.length;
-    textFmt.subhead(
-      containerStack.addText(`${count} more event${count > 1 ? "s" : ""}`)
+    addText(
+      containerStack,
+      `${count} more event${count > 1 ? "s" : ""}`,
+      style.subhead
     );
   }
 }
@@ -255,9 +255,10 @@ async function buildWeather(stack: WidgetStack): Promise<void> {
     wimg.imageSize = new Size(10, 10);
     wimg.tintColor = color;
 
-    const aqiText = aqiStack.addText((aqiCurrent || "-").toString());
-    textFmt.subhead(aqiText);
-    aqiText.textColor = color;
+    addText(aqiStack, (aqiCurrent || "-").toString(), {
+      ...style.subhead,
+      textColor: color,
+    });
 
     if (trend) {
       wimg = aqiStack.addImage(SFSymbol.named(trend).image);
@@ -267,15 +268,16 @@ async function buildWeather(stack: WidgetStack): Promise<void> {
   }
 
   if (weather.status === "fulfilled") {
-    textFmt.subhead(
-      forecastStack.addText(`${weather.value.low}°/${weather.value.high}°`)
+    addText(
+      forecastStack,
+      `${weather.value.low}°/${weather.value.high}°`,
+      style.subhead
     );
     forecastStack.addSpacer(6);
-
     currentStack.layoutVertically();
-    textFmt.bignum(currentStack.addText(`${weather.value.current}°`));
+    addText(currentStack, `${weather.value.current}°`, style.bignum);
   } else {
-    textFmt.bignum(currentStack.addText("--"));
+    addText(currentStack, "--", style.bignum);
   }
 }
 
