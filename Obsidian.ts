@@ -1,18 +1,31 @@
-//! icon-color: deep-gray; icon-glyph: tasks;
-// TODO icon-color/glyph is broken with esbuild
-
 // TODO: improve success state
 // TODO: strip markdown from description
+// TODO: cache file modification dates to avoid re-parsing
+// TODO: cache file list and dir modification dates
 
 const { transparent, applyTint } = importModule("no-background");
-import { addText, refreshAt, WidgetTextProps } from "./util";
+import { addText, refreshAfter, WidgetTextProps } from "./util";
 
-type Task = { description: string; due: Date; filename: string };
+type Task = {
+  description: string;
+  due: number;
+  filename: string;
+  start: number;
+};
 
 const BOOKMARK = "Obsidian";
-const TODAY = new Date();
-const TASK_RE =
-  /^\s*- \[ \] *(?<description>.+?) *📅 *(?<due>\d\d\d\d-\d\d-\d\d)/gm;
+const NOW = new Date().getTime();
+const r = String.raw;
+const TASK_RE = new RegExp(
+  [
+    r`^\s*- \[ \] *`,
+    r`(?<description>.+?) *`,
+    r`(?:🛫 *(?<start>\d\d\d\d-\d\d-\d\d))? *`,
+    r`(?:📅 *(?<due>\d\d\d\d-\d\d-\d\d))? *`,
+    r`$`,
+  ].join(""),
+  "gm"
+);
 
 const textStyle: WidgetTextProps = {
   font: Font.systemFont(12),
@@ -29,8 +42,10 @@ async function main() {
     console.error(`Please point a bookmark named ${BOOKMARK} to your vault.`);
     return;
   }
-  const tasks = await scanDirForTasks(fm, fm.bookmarkedPath(BOOKMARK));
-  tasks.sort((a, b) => a.due.getTime() - b.due.getTime());
+
+  const tasks = (await scanDirForTasks(fm, fm.bookmarkedPath(BOOKMARK)))
+    .filter((t) => t.due <= NOW || t.start <= NOW)
+    .sort((a, b) => a.due - b.due || a.start - b.start);
   const widget = tasks.length
     ? buildTasksWidget(tasks.slice(0, 3))
     : buildEmptyWidget();
@@ -40,27 +55,28 @@ async function main() {
   if (config.runsInApp) {
     widget.presentSmall();
   } else {
-    widget.refreshAfterDate = refreshAt();
+    widget.refreshAfterDate = refreshAfter(5);
     Script.setWidget(widget);
   }
 }
 
 async function scanDirForTasks(fm: FileManager, dir: string): Promise<Task[]> {
-  let results = [];
+  const normDate = (s: string): number =>
+    s ? dateFormatter.date(s).getTime() : Number.MAX_SAFE_INTEGER;
+  let results: Task[] = [];
   for (const filename of fm.listContents(dir)) {
     const path = fm.joinPath(dir, filename);
     if (fm.isDirectory(path)) {
       results = results.concat(await scanDirForTasks(fm, path));
-    } else if (/\.md/.test(filename)) {
+    } else if (fm.fileExtension(path) === "md") {
       await fm.downloadFileFromiCloud(path);
       results = results.concat(
-        [...fm.readString(path).matchAll(TASK_RE)]
-          .map((match) => ({
-            description: match.groups.description,
-            due: dateFormatter.date(match.groups.due),
-            filename: filename.replace(/\.md$/, ""),
-          }))
-          .filter((task) => task.due <= TODAY)
+        [...fm.readString(path).matchAll(TASK_RE)].map((match) => ({
+          description: match.groups.description,
+          due: normDate(match.groups.due),
+          filename: filename.replace(/\.md$/, ""),
+          start: normDate(match.groups.start),
+        }))
       );
     }
   }

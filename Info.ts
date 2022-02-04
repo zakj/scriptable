@@ -1,12 +1,14 @@
-//! icon-color: blue; icon-glyph: info;
-
 const { transparent } = importModule("no-background");
 import { fetchAqi, fetchSensorId } from "./purpleAir";
-import { addText, File, refreshAt, WidgetTextProps } from "./util";
+import {
+  addText,
+  File,
+  refreshAfter,
+  urlParams,
+  WidgetTextProps,
+} from "./util";
 
 const textColor = new Color("#ffffff", 1);
-const dimTextColor = new Color("#ffffff", 0.85);
-
 const style: Record<string, WidgetTextProps> = {
   bignum: {
     font: Font.ultraLightSystemFont(36),
@@ -20,7 +22,7 @@ const style: Record<string, WidgetTextProps> = {
   subhead: {
     font: Font.thinSystemFont(12),
     lineLimit: 1,
-    textColor: dimTextColor,
+    textColor: new Color("#ffffff", 0.85),
   },
 };
 
@@ -34,10 +36,16 @@ const AQI_THRESHOLDS: AqiThreshold[] = [
   { minAqi: -Infinity, color: textColor, symbol: "aqi.low" }, // good (green: 6de46d)
 ];
 
-const calendarListFile = new File("calendar-list.json");
-const locationCacheFile = new File("location.json", { local: true });
+// TODO share nobg cache dir?
+// TODO build pill.png
+// TODO update readme for openweather api key
+const calendarListFile = new File<string[]>("calendar-list.json");
+const locationCacheFile = new File<{ lat: number; lon: number }>(
+  "location.json",
+  { local: true }
+);
 const pillImageFile = new File("pill.png");
-const weatherApiKeyFile = new File("openweather-api-key.json");
+const weatherApiKeyFile = new File<string>("openweather-api-key.json");
 
 main().then(() => Script.complete());
 
@@ -65,7 +73,7 @@ async function main() {
     widget.presentMedium();
   } else if (config.runsInWidget) {
     const widget = await buildWidget();
-    widget.refreshAfterDate = refreshAt();
+    widget.refreshAfterDate = refreshAfter();
     Script.setWidget(widget);
   }
 }
@@ -78,11 +86,11 @@ async function buildWidget() {
   widget.setPadding(10, 15, 10, 0);
 
   const eventsStack = widget.addStack();
-  widget.addSpacer(null);
+  widget.addSpacer();
   const bottomStack = widget.addStack();
   bottomStack.bottomAlignContent();
   const dateStack = bottomStack.addStack();
-  bottomStack.addSpacer(null);
+  bottomStack.addSpacer();
   const weatherStack = bottomStack.addStack();
 
   await Promise.all([
@@ -119,15 +127,14 @@ async function buildEvents(stack: WidgetStack): Promise<void> {
 
   let calendars = await Calendar.forEvents();
   if (calendarListFile.exists) {
-    const calendarList = new Set(
-      (await calendarListFile.readJSON()) as string[]
-    );
+    const calendarList = new Set(await calendarListFile.readJSON());
     calendars = calendars.filter((c) => calendarList.has(c.identifier));
   }
 
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
-  const isAllDay = (event) => event.isAllDay || event.startDate <= todayStart;
+  const isAllDay = (event: CalendarEvent) =>
+    event.isAllDay || event.startDate <= todayStart;
 
   let events = await CalendarEvent.today(calendars);
   events = events.filter((e) => e.endDate > tenMinutesFromNow);
@@ -142,7 +149,8 @@ async function buildEvents(stack: WidgetStack): Promise<void> {
       });
     }
   }
-  const eventSort = (e) => (isAllDay(e) ? e.endDate : e.startDate);
+  const eventSort = (e: CalendarEvent) =>
+    isAllDay(e) ? e.endDate.getTime() : e.startDate.getTime();
   events.sort((a, b) => eventSort(a) - eventSort(b));
 
   const moreEvents = events.slice(shownEvents);
@@ -282,10 +290,7 @@ async function buildWeather(stack: WidgetStack): Promise<void> {
 }
 
 async function fetchAqiData(): Promise<{ current: number; trend: number }> {
-  const location = (await locationCacheFile.readJSON()) as {
-    lat: number;
-    lon: number;
-  };
+  const location = await locationCacheFile.readJSON();
   const sensorId = await fetchSensorId({
     lat: location.lat,
     lng: location.lon,
@@ -303,9 +308,15 @@ async function fetchWeatherData(): Promise<{
     locationCacheFile.readJSON(),
   ])) as [string, { lat: number; lon: number }];
 
-  const req = new Request(
-    `https://api.openweathermap.org/data/2.5/onecall?lat=${loc.lat}&lon=${loc.lon}&units=imperial&exclude=minutely,hourly,alerts&appid=${apiKey}`
-  );
+  const url = `https://api.openweathermap.org/data/2.5/onecall`;
+  const params = urlParams({
+    appid: apiKey,
+    exclude: "minutes,hourly,alerts",
+    lat: loc.lat,
+    lon: loc.lon,
+    units: "imperial",
+  });
+  const req = new Request(`${url}?${params}`);
   const resp = await req.loadJSON();
   return {
     low: Math.round(resp.daily[0].temp.min),

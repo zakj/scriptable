@@ -10,16 +10,22 @@ export function addText(
   return wt;
 }
 
-export function refreshAt(): Date {
+export function refreshAfter(minutes: number = 0.5): Date {
   const now = new Date();
   return new Date(
     now.getHours() < 7
       ? now.setHours(6, 30) && now // don't update overnight
-      : now.getTime() + 30 * 1000 // in 30 seconds
+      : now.getTime() + minutes * 60 * 1000
   );
 }
 
-export class File {
+export function urlParams(obj: Record<string, string | number>): string {
+  return Object.entries(obj)
+    .map((e) => e.join("="))
+    .join("&");
+}
+
+export class File<T> {
   fm: FileManager;
   path: string;
   iCloud: boolean;
@@ -52,12 +58,12 @@ export class File {
     return this.fm.readImage(this.path);
   }
 
-  async readJSON(): Promise<unknown> {
+  async readJSON(): Promise<T> {
     if (this.iCloud) await this.fm.downloadFileFromiCloud(this.path);
     return JSON.parse(this.fm.readString(this.path));
   }
 
-  writeJSON(value: any): void {
+  writeJSON(value: T): void {
     this.fm.writeString(this.path, JSON.stringify(value));
   }
 }

@@ -1,6 +1,7 @@
-import { File } from "./util";
+import { File, urlParams } from "./util";
 
 type Location = { lat: number; lng: number };
+type SensorCache = { lat: number; lng: Number; id: number };
 
 export async function fetchAqi(
   sensorId: number
@@ -22,7 +23,7 @@ export async function fetchAqi(
 }
 
 export async function fetchSensorId({ lat, lng }: Location): Promise<number> {
-  const sensorCacheFile = new File("purple-air.json");
+  const sensorCacheFile = new File<SensorCache>("purple-air.json");
   if (sensorCacheFile.modifiedInLast(15)) {
     const sensorCache = await sensorCacheFile.readJSON();
     if (sensorCache.lat === lat && sensorCache.lng === lng)
@@ -31,14 +32,15 @@ export async function fetchSensorId({ lat, lng }: Location): Promise<number> {
 
   let sensors = [];
   let bound = 0.01;
+  const url = "https://www.purpleair.com/json";
   while (sensors.length < 1 && bound < 0.5) {
-    const nwLat = lat + bound;
-    const seLat = lat - bound;
-    const nwLng = lng - bound;
-    const seLng = lng + bound;
-    const req = new Request(
-      `https://www.purpleair.com/json?exclude=true&nwlat=${nwLat}&selat=${seLat}&nwlng=${nwLng}&selng=${seLng}`
-    );
+    const params = urlParams({
+      nwlat: lat + bound,
+      selat: lat - bound,
+      nwlng: lng - bound,
+      selng: lng + bound,
+    });
+    const req = new Request(`${url}?${params}`);
     const json = await req.loadJSON();
     sensors = json.results.filter(
       (s) => !s.Flag && !s.A_H && s.DEVICE_LOCATIONTYPE !== "inside"
