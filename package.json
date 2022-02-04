@@ -1,10 +1,14 @@
 {
   "private": true,
   "scripts": {
-    "build": "esbuild --bundle --legal-comments=inline --minify --outdir=Documents Info.ts Obsidian.ts",
-    "start": "esbuild --bundle --legal-comments=inline --minify --outdir=Documents --watch Info.ts Obsidian.ts"
+    "build": "node build.js",
+    "start": "node build.js --watch"
   },
   "eslintConfig": {
+    "env": {
+      "es2020": true,
+      "node": true
+    },
     "extends": "@zakj"
   },
   "devDependencies": {
