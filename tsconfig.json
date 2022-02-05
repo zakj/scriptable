@@ -2,5 +2,6 @@
   "compilerOptions": {
     "lib": ["es2020"],
     "target": "es2020",
+    "moduleResolution": "node"
   }
 }

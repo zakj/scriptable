@@ -2,8 +2,10 @@
 // TODO: strip markdown from description
 // TODO: cache file modification dates to avoid re-parsing
 // TODO: cache file list and dir modification dates
+// TODO: show +N when more than 3 tasks
 
 const { transparent, applyTint } = importModule("no-background");
+import { parseDocument } from "obsidian-tasks-parser";
 import { addText, refreshAfter, WidgetTextProps } from "./util";
 
 type Task = {
@@ -15,17 +17,6 @@ type Task = {
 
 const BOOKMARK = "Obsidian";
 const NOW = new Date().getTime();
-const r = String.raw;
-const TASK_RE = new RegExp(
-  [
-    r`^\s*- \[ \] *`,
-    r`(?<description>.+?) *`,
-    r`(?:🛫 *(?<start>\d\d\d\d-\d\d-\d\d))? *`,
-    r`(?:📅 *(?<due>\d\d\d\d-\d\d-\d\d))? *`,
-    r`$`,
-  ].join(""),
-  "gm"
-);
 
 const textStyle: WidgetTextProps = {
   font: Font.systemFont(12),
@@ -46,9 +37,7 @@ async function main() {
   const tasks = (await scanDirForTasks(fm, fm.bookmarkedPath(BOOKMARK)))
     .filter((t) => t.due <= NOW || t.start <= NOW)
     .sort((a, b) => a.due - b.due || a.start - b.start);
-  const widget = tasks.length
-    ? buildTasksWidget(tasks.slice(0, 3))
-    : buildEmptyWidget();
+  const widget = tasks.length ? buildTasksWidget(tasks) : buildEmptyWidget();
   widget.backgroundImage = await transparent(Script.name());
   applyTint(widget, "#666666", 0.2);
 
@@ -71,11 +60,11 @@ async function scanDirForTasks(fm: FileManager, dir: string): Promise<Task[]> {
     } else if (fm.fileExtension(path) === "md") {
       await fm.downloadFileFromiCloud(path);
       results = results.concat(
-        [...fm.readString(path).matchAll(TASK_RE)].map((match) => ({
-          description: match.groups.description,
-          due: normDate(match.groups.due),
+        parseDocument(fm.readString(path), " ").map((task) => ({
+          description: task.description,
+          due: normDate(task.dueDate),
           filename: filename.replace(/\.md$/, ""),
-          start: normDate(match.groups.start),
+          start: normDate(task.startDate),
         }))
       );
     }
@@ -84,6 +73,7 @@ async function scanDirForTasks(fm: FileManager, dir: string): Promise<Task[]> {
 }
 
 function buildTasksWidget(tasks: Task[]): ListWidget {
+  const showTaskCount = 3;
   const widget = new ListWidget();
   widget.setPadding(16, 10, 16, 5);
 
@@ -98,7 +88,7 @@ function buildTasksWidget(tasks: Task[]): ListWidget {
   titleStack.addSpacer();
   widget.addSpacer(5);
 
-  for (const task of tasks) {
+  for (const task of tasks.slice(0, showTaskCount)) {
     widget.addSpacer(3);
     const hStack = widget.addStack();
     addText(hStack, "•", {
@@ -121,6 +111,16 @@ function buildTasksWidget(tasks: Task[]): ListWidget {
   }
 
   widget.addSpacer(); // top align
+  if (tasks.length > showTaskCount) {
+    const hStack = widget.addStack();
+    hStack.addSpacer();
+    addText(hStack, `+${tasks.length - showTaskCount}`, {
+      ...textStyle,
+      textOpacity: 0.5,
+    });
+    hStack.addSpacer(5);
+  }
+
   return widget;
 }
 
