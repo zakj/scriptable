@@ -179,6 +179,7 @@ async function buildEvents(stack: WidgetStack): Promise<void> {
     pill.tintColor = color;
   }
 
+  // eslint-disable-next-line no-control-regex
   const nonAsciiRe = /[^\x00-\x7f]/g;
   const dateFormatter = new DateFormatter();
   dateFormatter.dateFormat = 'HH:mm';

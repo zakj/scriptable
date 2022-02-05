@@ -10,7 +10,7 @@ export function addText(
   return wt;
 }
 
-export function refreshAfter(minutes: number = 0.5): Date {
+export function refreshAfter(minutes = 0.5): Date {
   const now = new Date();
   return new Date(
     now.getHours() < 7
@@ -21,8 +21,8 @@ export function refreshAfter(minutes: number = 0.5): Date {
 
 export function urlParams(obj: Record<string, string | number>): string {
   return Object.entries(obj)
-    .map((e) => e.join("="))
-    .join("&");
+    .map((e) => e.join('='))
+    .join('&');
 }
 
 export class File<T> {
