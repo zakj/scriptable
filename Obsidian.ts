@@ -4,9 +4,9 @@
 // TODO: cache file list and dir modification dates
 // TODO: show +N when more than 3 tasks
 
-const { transparent, applyTint } = importModule("no-background");
-import { parseDocument } from "obsidian-tasks-parser";
-import { addText, refreshAfter, WidgetTextProps } from "./util";
+const { transparent, applyTint } = importModule('no-background');
+import { parseDocument } from 'obsidian-tasks-parser';
+import { addText, refreshAfter, WidgetTextProps } from './util';
 
 type Task = {
   description: string;
@@ -15,15 +15,15 @@ type Task = {
   start: number;
 };
 
-const BOOKMARK = "Obsidian";
+const BOOKMARK = 'Obsidian';
 const NOW = new Date().getTime();
 
 const textStyle: WidgetTextProps = {
   font: Font.systemFont(12),
-  textColor: new Color("#ffffff", 1),
+  textColor: new Color('#ffffff', 1),
 };
 const dateFormatter = new DateFormatter();
-dateFormatter.dateFormat = "yyyy-MM-dd";
+dateFormatter.dateFormat = 'yyyy-MM-dd';
 
 main().then(() => Script.complete());
 
@@ -39,7 +39,7 @@ async function main() {
     .sort((a, b) => a.due - b.due || a.start - b.start);
   const widget = tasks.length ? buildTasksWidget(tasks) : buildEmptyWidget();
   widget.backgroundImage = await transparent(Script.name());
-  applyTint(widget, "#666666", 0.2);
+  applyTint(widget, '#666666', 0.2);
 
   if (config.runsInApp) {
     widget.presentSmall();
@@ -57,13 +57,13 @@ async function scanDirForTasks(fm: FileManager, dir: string): Promise<Task[]> {
     const path = fm.joinPath(dir, filename);
     if (fm.isDirectory(path)) {
       results = results.concat(await scanDirForTasks(fm, path));
-    } else if (fm.fileExtension(path) === "md") {
+    } else if (fm.fileExtension(path) === 'md') {
       await fm.downloadFileFromiCloud(path);
       results = results.concat(
-        parseDocument(fm.readString(path), " ").map((task) => ({
+        parseDocument(fm.readString(path), ' ').map((task) => ({
           description: task.description,
           due: normDate(task.dueDate),
-          filename: filename.replace(/\.md$/, ""),
+          filename: filename.replace(/\.md$/, ''),
           start: normDate(task.startDate),
         }))
       );
@@ -79,7 +79,7 @@ function buildTasksWidget(tasks: Task[]): ListWidget {
 
   const titleStack = widget.addStack();
   titleStack.addSpacer();
-  addText(titleStack, "Today".toUpperCase(), {
+  addText(titleStack, 'Today'.toUpperCase(), {
     ...textStyle,
     font: Font.boldSystemFont(12),
     textOpacity: 0.8,
@@ -91,7 +91,7 @@ function buildTasksWidget(tasks: Task[]): ListWidget {
   for (const task of tasks.slice(0, showTaskCount)) {
     widget.addSpacer(3);
     const hStack = widget.addStack();
-    addText(hStack, "•", {
+    addText(hStack, '•', {
       ...textStyle,
       textOpacity: 0.4,
     });
@@ -128,7 +128,7 @@ function buildEmptyWidget(): ListWidget {
   const widget = new ListWidget();
   widget.setPadding(50, 50, 50, 50);
   const s = widget.addStack();
-  const checkmark = SFSymbol.named("checkmark.circle");
+  const checkmark = SFSymbol.named('checkmark.circle');
   checkmark.applyFont(Font.systemFont(128));
   s.addSpacer();
   s.addImage(checkmark.image);

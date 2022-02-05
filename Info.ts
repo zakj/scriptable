@@ -1,14 +1,14 @@
-const { transparent } = importModule("no-background");
-import { fetchAqi, fetchSensorId } from "./purpleAir";
+const { transparent } = importModule('no-background');
+import { fetchAqi, fetchSensorId } from './purpleAir';
 import {
   addText,
   File,
   refreshAfter,
   urlParams,
   WidgetTextProps,
-} from "./util";
+} from './util';
 
-const textColor = new Color("#ffffff", 1);
+const textColor = new Color('#ffffff', 1);
 const style: Record<string, WidgetTextProps> = {
   bignum: {
     font: Font.ultraLightSystemFont(36),
@@ -22,30 +22,30 @@ const style: Record<string, WidgetTextProps> = {
   subhead: {
     font: Font.thinSystemFont(12),
     lineLimit: 1,
-    textColor: new Color("#ffffff", 0.85),
+    textColor: new Color('#ffffff', 0.85),
   },
 };
 
 type AqiThreshold = { minAqi: number; color: Color; symbol: string };
 const AQI_THRESHOLDS: AqiThreshold[] = [
-  { minAqi: 300, color: new Color("ce4ec5", 1), symbol: "aqi.high" }, // hazardous
-  { minAqi: 200, color: new Color("f33939", 1), symbol: "aqi.high" }, // very unhealthy
-  { minAqi: 150, color: new Color("f16745", 1), symbol: "aqi.medium" }, // unhealthy
-  { minAqi: 100, color: new Color("f7a021", 1), symbol: "aqi.medium" }, // unhealthy for sensitive groups
-  { minAqi: 50, color: new Color("f2e269", 1), symbol: "aqi.low" }, // moderate
-  { minAqi: -Infinity, color: textColor, symbol: "aqi.low" }, // good (green: 6de46d)
+  { minAqi: 300, color: new Color('ce4ec5', 1), symbol: 'aqi.high' }, // hazardous
+  { minAqi: 200, color: new Color('f33939', 1), symbol: 'aqi.high' }, // very unhealthy
+  { minAqi: 150, color: new Color('f16745', 1), symbol: 'aqi.medium' }, // unhealthy
+  { minAqi: 100, color: new Color('f7a021', 1), symbol: 'aqi.medium' }, // unhealthy for sensitive groups
+  { minAqi: 50, color: new Color('f2e269', 1), symbol: 'aqi.low' }, // moderate
+  { minAqi: -Infinity, color: textColor, symbol: 'aqi.low' }, // good (green: 6de46d)
 ];
 
 // TODO share nobg cache dir?
 // TODO build pill.png
 // TODO update readme for openweather api key
-const calendarListFile = new File<string[]>("calendar-list.json");
+const calendarListFile = new File<string[]>('calendar-list.json');
 const locationCacheFile = new File<{ lat: number; lon: number }>(
-  "location.json",
+  'location.json',
   { local: true }
 );
-const pillImageFile = new File("pill.png");
-const weatherApiKeyFile = new File<string>("openweather-api-key.json");
+const pillImageFile = new File('pill.png');
+const weatherApiKeyFile = new File<string>('openweather-api-key.json');
 
 main().then(() => Script.complete());
 
@@ -60,9 +60,9 @@ async function main() {
     let updateCalendars = false;
     if (updateCalendars || !calendarListFile.exists) {
       const a = new Alert();
-      a.title = "Change calendar list?";
-      a.addAction("Update");
-      a.addCancelAction("Cancel");
+      a.title = 'Change calendar list?';
+      a.addAction('Update');
+      a.addCancelAction('Cancel');
       updateCalendars = (await a.present()) !== -1;
     }
     if (updateCalendars) {
@@ -108,7 +108,7 @@ async function buildDate(stack: WidgetStack): Promise<void> {
 
   stack.bottomAlignContent();
 
-  dateFormatter.dateFormat = "d";
+  dateFormatter.dateFormat = 'd';
   addText(stack, dateFormatter.string(now), style.bignum);
   stack.addSpacer(5);
 
@@ -116,14 +116,14 @@ async function buildDate(stack: WidgetStack): Promise<void> {
   dayStack.layoutVertically();
 
   // DEBUG
-  dateFormatter.dateFormat = "HH:mm";
+  dateFormatter.dateFormat = 'HH:mm';
   addText(dayStack, dateFormatter.string(now), {
     ...style.subhead,
     font: Font.thinSystemFont(10),
   });
   // END DEBUG
 
-  dateFormatter.dateFormat = "EEEE";
+  dateFormatter.dateFormat = 'EEEE';
   addText(dayStack, dateFormatter.string(now).toUpperCase(), style.normal);
   dayStack.addSpacer(6);
 }
@@ -152,7 +152,7 @@ async function buildEvents(stack: WidgetStack): Promise<void> {
     // Today's all-day events seem to show up in tomorrow's results.
     events = events.filter((e) => e.endDate.getDay() > now.getDay());
     if (events.length > 0) {
-      addText(stack, "Tomorrow".toUpperCase(), {
+      addText(stack, 'Tomorrow'.toUpperCase(), {
         font: Font.semiboldSystemFont(10),
         textColor: textColor,
       });
@@ -165,7 +165,7 @@ async function buildEvents(stack: WidgetStack): Promise<void> {
   const moreEvents = events.slice(shownEvents);
   events = events.slice(0, shownEvents);
 
-  stack.url = "calshow://";
+  stack.url = 'calshow://';
   stack.layoutVertically();
 
   const pillImage = await pillImageFile.readImage();
@@ -181,7 +181,7 @@ async function buildEvents(stack: WidgetStack): Promise<void> {
 
   const nonAsciiRe = /[^\x00-\x7f]/g;
   const dateFormatter = new DateFormatter();
-  dateFormatter.dateFormat = "HH:mm";
+  dateFormatter.dateFormat = 'HH:mm';
   events.forEach((e) => {
     const containerStack = stack.addStack();
     containerStack.setPadding(3, 0, 3, 15);
@@ -200,7 +200,7 @@ async function buildEvents(stack: WidgetStack): Promise<void> {
     textStack.layoutVertically();
     addText(
       textStack,
-      e.title.replace(nonAsciiRe, " ").replace(/\s+/g, " ").trim(),
+      e.title.replace(nonAsciiRe, ' ').replace(/\s+/g, ' ').trim(),
       { ...style.normal, lineLimit: 3 }
     );
 
@@ -225,7 +225,7 @@ async function buildEvents(stack: WidgetStack): Promise<void> {
     const count = moreEvents.length;
     addText(
       containerStack,
-      `${count} more event${count > 1 ? "s" : ""}`,
+      `${count} more event${count > 1 ? 's' : ''}`,
       style.subhead
     );
   }
@@ -246,11 +246,11 @@ async function buildWeather(stack: WidgetStack): Promise<void> {
   let aqiShown = false;
   let aqiCurrent = null;
   let aqiTrend = 0;
-  if (aqi.status === "fulfilled" && aqi.value.current > 50) {
+  if (aqi.status === 'fulfilled' && aqi.value.current > 50) {
     aqiShown = true;
     aqiCurrent = aqi.value.current;
     aqiTrend = aqi.value.trend;
-  } else if (aqi.status === "rejected") {
+  } else if (aqi.status === 'rejected') {
     // XXX aqiShown = true;
   }
   if (aqiShown) {
@@ -259,9 +259,9 @@ async function buildWeather(stack: WidgetStack): Promise<void> {
     );
     const trend =
       aqiTrend > 0
-        ? "arrow.up.right"
+        ? 'arrow.up.right'
         : aqiTrend < 0
-        ? "arrow.down.right"
+        ? 'arrow.down.right'
         : null;
 
     const aqiStack = forecastStack.addStack();
@@ -272,7 +272,7 @@ async function buildWeather(stack: WidgetStack): Promise<void> {
     wimg.imageSize = new Size(10, 10);
     wimg.tintColor = color;
 
-    addText(aqiStack, (aqiCurrent || "-").toString(), {
+    addText(aqiStack, (aqiCurrent || '-').toString(), {
       ...style.subhead,
       textColor: color,
     });
@@ -284,7 +284,7 @@ async function buildWeather(stack: WidgetStack): Promise<void> {
     }
   }
 
-  if (weather.status === "fulfilled") {
+  if (weather.status === 'fulfilled') {
     addText(
       forecastStack,
       `${weather.value.low}°/${weather.value.high}°`,
@@ -294,7 +294,7 @@ async function buildWeather(stack: WidgetStack): Promise<void> {
     currentStack.layoutVertically();
     addText(currentStack, `${weather.value.current}°`, style.bignum);
   } else {
-    addText(currentStack, "--", style.bignum);
+    addText(currentStack, '--', style.bignum);
   }
 }
 
@@ -320,10 +320,10 @@ async function fetchWeatherData(): Promise<{
   const url = `https://api.openweathermap.org/data/2.5/onecall`;
   const params = urlParams({
     appid: apiKey,
-    exclude: "minutes,hourly,alerts",
+    exclude: 'minutes,hourly,alerts',
     lat: loc.lat,
     lon: loc.lon,
-    units: "imperial",
+    units: 'imperial',
   });
   const req = new Request(`${url}?${params}`);
   const resp = await req.loadJSON();
