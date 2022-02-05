@@ -114,6 +114,15 @@ async function buildDate(stack: WidgetStack): Promise<void> {
 
   const dayStack = stack.addStack();
   dayStack.layoutVertically();
+
+  // DEBUG
+  dateFormatter.dateFormat = "HH:mm";
+  addText(dayStack, dateFormatter.string(now), {
+    ...style.subhead,
+    font: Font.thinSystemFont(10),
+  });
+  // END DEBUG
+
   dateFormatter.dateFormat = "EEEE";
   addText(dayStack, dateFormatter.string(now).toUpperCase(), style.normal);
   dayStack.addSpacer(6);
