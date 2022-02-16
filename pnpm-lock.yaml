@@ -5,13 +5,13 @@ specifiers:
   '@zakj/eslint-config': ^2.0.0
   '@zakj/prettier-config': ^2.0.0
   esbuild: ^0.14.16
-  eslint: 8.8.0
-  obsidian-tasks-parser: ^1.0.0
+  eslint: ^8.8.0
+  obsidian-tasks-parser: ^1.1.0
   prettier: ^2.5.1
   typescript: ^4.5.5
 
 dependencies:
-  obsidian-tasks-parser: 1.0.0
+  obsidian-tasks-parser: 1.1.0
 
 devDependencies:
   '@types/scriptable-ios': 1.6.5
@@ -900,8 +900,8 @@ packages:
     resolution: {integrity: sha1-Sr6/7tdUHywnrPspvbvRXI1bpPc=}
     dev: true
 
-  /obsidian-tasks-parser/1.0.0:
-    resolution: {integrity: sha512-7aKt3DXeQ/lULCJVqpDMi5S7qCKmqWkOo5KcGSueeZSR8IwlPFowvGjt3FmnKI2nWMx5H4OzWHxt2Oyg813BCA==}
+  /obsidian-tasks-parser/1.1.0:
+    resolution: {integrity: sha512-DkosmvmE8F4W9btfnFrgGlpf0ERNV4xOJMNbPtKTBOlscn1G7/muH8GvcwkIOV7WdLxKHYfXfaJAetcZ/o0P7Q==}
     dev: false
 
   /once/1.4.0:

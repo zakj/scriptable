@@ -22,6 +22,6 @@
     "typescript": "^4.5.5"
   },
   "dependencies": {
-    "obsidian-tasks-parser": "^1.0.0"
+    "obsidian-tasks-parser": "^1.1.0"
   }
 }
