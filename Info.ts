@@ -1,5 +1,4 @@
 const { transparent } = importModule('no-background');
-import { fetchAqi, fetchSensorId } from './purpleAir';
 import {
   addText,
   File,
@@ -26,15 +25,22 @@ const style: Record<string, WidgetTextProps> = {
   },
 };
 
-type AqiThreshold = { minAqi: number; color: Color; symbol: string };
-const AQI_THRESHOLDS: AqiThreshold[] = [
-  { minAqi: 300, color: new Color('ce4ec5', 1), symbol: 'aqi.high' }, // hazardous
-  { minAqi: 200, color: new Color('f33939', 1), symbol: 'aqi.high' }, // very unhealthy
-  { minAqi: 150, color: new Color('f16745', 1), symbol: 'aqi.medium' }, // unhealthy
-  { minAqi: 100, color: new Color('f7a021', 1), symbol: 'aqi.medium' }, // unhealthy for sensitive groups
-  { minAqi: 50, color: new Color('f2e269', 1), symbol: 'aqi.low' }, // moderate
-  { minAqi: -Infinity, color: textColor, symbol: 'aqi.low' }, // good (green: 6de46d)
-];
+// type AqiThreshold = { minAqi: number; color: Color; symbol: string };
+// const AQI_THRESHOLDS: AqiThreshold[] = [
+//   { minAqi: 300, color: new Color('ce4ec5', 1), symbol: 'aqi.high' }, // hazardous
+//   { minAqi: 200, color: new Color('f33939', 1), symbol: 'aqi.high' }, // very unhealthy
+//   { minAqi: 150, color: new Color('f16745', 1), symbol: 'aqi.medium' }, // unhealthy
+//   { minAqi: 100, color: new Color('f7a021', 1), symbol: 'aqi.medium' }, // unhealthy for sensitive groups
+//   { minAqi: 50, color: new Color('f2e269', 1), symbol: 'aqi.low' }, // moderate
+//   { minAqi: -Infinity, color: textColor, symbol: 'aqi.low' }, // good (green: 6de46d)
+// ];
+type AQIs = Record<number, { color: Color; symbol: string }>;
+const AQIS: AQIs = {
+  2: { color: new Color('6de46d', 1), symbol: 'aqi.low' },
+  3: { color: new Color('f7a021', 1), symbol: 'aqi.medium' },
+  4: { color: new Color('f33939', 1), symbol: 'aqi.high' },
+  5: { color: new Color('ce4ec5', 1), symbol: 'aqi.high' },
+};
 
 // TODO share nobg cache dir?
 // TODO build pill.png
@@ -240,50 +246,21 @@ async function buildWeather(stack: WidgetStack): Promise<void> {
   ]);
 
   stack.bottomAlignContent();
-  const forecastStack = stack.addStack();
-  forecastStack.layoutVertically();
+
+  const leftStack = stack.addStack();
+  leftStack.layoutVertically();
+  const forecastStack = leftStack.addStack();
+  forecastStack.centerAlignContent();
+
   stack.addSpacer(5);
   const currentStack = stack.addStack();
 
-  let aqiShown = false;
-  let aqiCurrent = null;
-  let aqiTrend = 0;
-  if (aqi.status === 'fulfilled' && aqi.value.current > 50) {
-    aqiShown = true;
-    aqiCurrent = aqi.value.current;
-    aqiTrend = aqi.value.trend;
-  } else if (aqi.status === 'rejected') {
-    // XXX aqiShown = true;
-  }
-  if (aqiShown) {
-    const { color, symbol } = AQI_THRESHOLDS.find(
-      ({ minAqi }) => (aqiCurrent || 0) >= minAqi
-    );
-    const trend =
-      aqiTrend > 0
-        ? 'arrow.up.right'
-        : aqiTrend < 0
-        ? 'arrow.down.right'
-        : null;
-
-    const aqiStack = forecastStack.addStack();
-    aqiStack.centerAlignContent();
-    aqiStack.spacing = 3;
-
-    let wimg = aqiStack.addImage(SFSymbol.named(symbol).image);
+  if (aqi.status === 'fulfilled' && aqi.value.current > 1) {
+    const { color, symbol } = AQIS[aqi.value.current];
+    const wimg = forecastStack.addImage(SFSymbol.named(symbol).image);
     wimg.imageSize = new Size(10, 10);
     wimg.tintColor = color;
-
-    addText(aqiStack, (aqiCurrent || '-').toString(), {
-      ...style.subhead,
-      textColor: color,
-    });
-
-    if (trend) {
-      wimg = aqiStack.addImage(SFSymbol.named(trend).image);
-      wimg.imageSize = new Size(6, 6);
-      wimg.tintColor = color;
-    }
+    forecastStack.addSpacer(3);
   }
 
   if (weather.status === 'fulfilled') {
@@ -292,21 +269,30 @@ async function buildWeather(stack: WidgetStack): Promise<void> {
       `${weather.value.low}°/${weather.value.high}°`,
       style.subhead
     );
-    forecastStack.addSpacer(6);
-    currentStack.layoutVertically();
     addText(currentStack, `${weather.value.current}°`, style.bignum);
   } else {
     addText(currentStack, '--', style.bignum);
   }
+
+  leftStack.addSpacer(6);
 }
 
-async function fetchAqiData(): Promise<{ current: number; trend: number }> {
-  const location = await locationCacheFile.readJSON();
-  const sensorId = await fetchSensorId({
-    lat: location.lat,
-    lng: location.lon,
+async function fetchAqiData(): Promise<{ current: number }> {
+  const [apiKey, loc] = (await Promise.all([
+    weatherApiKeyFile.readJSON(),
+    locationCacheFile.readJSON(),
+  ])) as [string, { lat: number; lon: number }];
+  const url = `https://api.openweathermap.org/data/2.5/air_pollution`;
+  const params = urlParams({
+    appid: apiKey,
+    lat: loc.lat,
+    lon: loc.lon,
   });
-  return fetchAqi(sensorId);
+  const req = new Request(`${url}?${params}`);
+  const resp = await req.loadJSON();
+  return {
+    current: resp.list[0].main.aqi,
+  };
 }
 
 async function fetchWeatherData(): Promise<{
