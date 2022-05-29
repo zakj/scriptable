@@ -106,6 +106,7 @@ async function buildDate(stack: WidgetStack): Promise<void> {
   const dateFormatter = new DateFormatter();
   const now = new Date();
 
+  stack.url = 'calshow://';
   stack.bottomAlignContent();
 
   dateFormatter.dateFormat = 'd';
